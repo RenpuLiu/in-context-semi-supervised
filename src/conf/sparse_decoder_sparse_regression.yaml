@@ -1,0 +1,39 @@
+inherit: 
+    - wandb.yaml
+
+model:
+    family: SparseDecoder
+    n_embd: 42
+    n_layer: 13
+    n_head: 4
+    n_dims: 20
+    n_point: 41
+    n_positions: 101
+
+training:
+    task: sparse_linear_regression
+    task_kwargs: {"sparsity": 3}
+    data: gaussian
+    task_kwargs: {}
+    batch_size: 64
+    learning_rate: 0.0001
+    save_every_steps: 1000
+    keep_every_steps: 100000
+    train_steps: 1000001
+    curriculum:
+        points:
+            start: 41
+            end: 41
+            inc: 2
+            interval: 2000
+        dims:
+            start: 20
+            end: 20
+            inc: 1
+            interval: 2000
+
+
+out_dir: ../models/sparse_linear_regression
+
+wandb:
+    name: "sparse_regression_standard"
