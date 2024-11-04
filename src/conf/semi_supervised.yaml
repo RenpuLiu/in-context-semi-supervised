@@ -2,7 +2,7 @@ inherit:
     - wandb.yaml
 
 model:
-    family: SoftEncoder
+    family: SoftmaxEncoder
     n_embd: 6
     n_layer: 12
     n_head: 1
