@@ -260,7 +260,7 @@ class SoftmaxEncoder(nn.Module):
         """
         d = xs_b.size(-1)
         # half_n = xs_b.size(1)//3
-        half_n = 1
+        half_n = 5
         zs = torch.cat((ys_b, xs_b), dim=2)
         zs[:, half_n:, d:].zero_()
         if xs_b.shape[1] < ys_b.shape[1]:
