@@ -250,7 +250,7 @@ class SoftmaxEncoder(nn.Module):
                 )
             )
             self._lns_2.append(nn.LayerNorm([self.n_embd]))
-        self._read_out = nn.Linear(n_embd, 1)
+        self._read_out = nn.Linear(n_embd, n_embd)
 
     @staticmethod
     def _combine(xs_b, ys_b):
@@ -298,8 +298,8 @@ class SoftmaxEncoder(nn.Module):
 
             attn_weights = torch.sum(attn_weights, dim=1)
 
-            if self.normalize_attn:
-                attn_weights = attn_weights/n_points
+            # if self.normalize_attn:
+            #     attn_weights = attn_weights/n_points
             H = H + attn_weights
 
             if self.layernorm:
