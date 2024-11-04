@@ -25,7 +25,7 @@ def build_model(conf):
             n_layer=conf.n_layer,
             n_head=conf.n_head,
         )
-    elif conf.family == "ReluEncoder":
+    elif conf.family == "SoftmaxEncoder":
         # backward compatible
         if 'encoder_activation' not in conf.keys():
             conf.encoder_activation = "relu"
