@@ -141,9 +141,9 @@ def train(model, args):
                 {
                     "overall_loss": loss,
                     "excess_loss": loss / baseline_loss,
-                    "pointwise/loss": dict(
-                        zip(point_wise_tags, point_wise_loss.cpu().numpy())
-                    ),
+                    # "pointwise/loss": dict(
+                    #     zip(point_wise_tags, point_wise_loss.cpu().numpy())
+                    # ),
                     "n_points": curriculum.n_points,
                     "n_dims": curriculum.n_dims_truncated,
                 },
