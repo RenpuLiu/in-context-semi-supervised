@@ -259,7 +259,7 @@ class SoftmaxEncoder(nn.Module):
         resulting sequence would be Bx(N+1)x(d+1), where (N+1)-th token is test
         """
         d = xs_b.size(-1)
-        half_n = xs_b.size(1)//2
+        half_n = xs_b.size(1)//3
         zs = torch.cat((ys_b, xs_b), dim=2)
         zs[:, half_n:, d:].zero_()
         if xs_b.shape[1] < ys_b.shape[1]:
