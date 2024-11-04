@@ -211,8 +211,8 @@ class SemiClassification(Task):
         noise = torch.tensor(noise, device=xs_b.device, dtype=xs_b.dtype)
 
         w_b = self.w_b.to(xs_b.device)
-        print(w_b.size(), xs_b.size(), noise.size())
-        ys_b = torch.matmul(w_b, xs_b+noise)
+
+        ys_b = torch.matmul(xs_b+noise, w_b)
         
         return ys_b
 
