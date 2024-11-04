@@ -1,5 +1,5 @@
 wandb:
-    project: in-context-training
+    project: semi_supervised
     entity: renpu
     notes:
     log_every_steps: 100
