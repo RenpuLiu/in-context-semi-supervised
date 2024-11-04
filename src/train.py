@@ -26,8 +26,8 @@ def train_step(model, xs, ys, head_mask, optimizer, loss_func):
     elif 'ReluEncoder' in model.name:
         output = model(xs, ys, head_mask)
     
-    if 'Encoder' in model.name:
-        loss = loss_func(output[:, -1:], ys[:, -1:])
+    if 'SoftmaxEncoder' in model.name:
+        loss = loss_func(output, xs)
     else:
         loss = loss_func(output, ys)
     loss.backward()
@@ -123,7 +123,10 @@ def train(model, args):
 
         point_wise_tags = list(range(curriculum.n_points))
         point_wise_loss_func = task.get_metric()
-        point_wise_loss = point_wise_loss_func(output, ys.cuda()).mean(dim=0)
+        if "semi" in args.training.task:
+            point_wise_loss = point_wise_loss_func(output, xs.cuda()).mean(dim=0)
+        else:
+            point_wise_loss = point_wise_loss_func(output, ys.cuda()).mean(dim=0)
 
         baseline_loss = (
             sum(
@@ -199,7 +202,7 @@ def main(args):
 if __name__ == "__main__":
     parser = QuinineArgumentParser(schema=schema)
     args = parser.parse_quinfig()
-    assert args.model.family in ["gpt2", "lstm", "ReluEncoder", "LassoEncoder", "ReluDecoder", "SparseDecoder"]
+    assert args.model.family in ["gpt2", "lstm", "ReluEncoder", "SoftmaxEncoder", "LassoEncoder", "ReluDecoder", "SparseDecoder"]
     print(f"Running with: {args}")
 
     if not args.test_run:

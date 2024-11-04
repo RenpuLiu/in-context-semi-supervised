@@ -32,8 +32,8 @@ def build_model(conf):
         if 'normalize_attn' not in conf.keys():
             conf.normalize_attn = True
 
-        model = ReluEncoder(
-            n_dims=conf.n_dims+1,
+        model = SoftmaxEncoder(
+            n_dims=conf.n_dims,
             n_positions=conf.n_positions,
             n_embd=conf.n_embd,
             n_layer=conf.n_layer,
@@ -211,10 +211,10 @@ def get_activation(activation="relu"):
 
 
 
-class ReluEncoder(nn.Module):
+class SoftmaxEncoder(nn.Module):
     def __init__(self, n_dims, n_positions, n_embd=128, n_layer=12, n_head=4, n_point=11,
-                 activation="relu", normalize_attn=True, mlp=True, layernorm=True):
-        super(ReluEncoder, self).__init__()
+                 activation="softmax", normalize_attn=True, mlp=True, layernorm=True):
+        super(SoftmaxEncoder, self).__init__()
         self.name = f"ReluEncoder_embd={n_embd}_layer={n_layer}_head={n_head}"
 
         # configs
@@ -229,7 +229,7 @@ class ReluEncoder(nn.Module):
         self.mlp = mlp
         self.n_point = n_point
         # layers
-        self._read_in = nn.Linear(n_dims, n_embd)
+        self._read_in = nn.Linear(n_embd, n_embd)
         
         self._queries = nn.ModuleList()
         self._keys = nn.ModuleList()
@@ -237,7 +237,7 @@ class ReluEncoder(nn.Module):
         self._mlps = nn.ModuleList()
         self._lns_1 = nn.ModuleList()
         self._lns_2 = nn.ModuleList()
-        for i in range(n_layer):
+        for _ in range(n_layer):
             self._queries.append(nn.Linear(n_embd, self.n_head*n_embd, bias=False))
             self._keys.append(nn.Linear(n_embd, self.n_head*n_embd, bias=False))
             self._values.append(nn.Linear(n_embd, self.n_head*n_embd, bias=False))
@@ -258,8 +258,10 @@ class ReluEncoder(nn.Module):
         Directly stack the x's and y's into the same location
         resulting sequence would be Bx(N+1)x(d+1), where (N+1)-th token is test
         """
-        zs = torch.cat((xs_b, ys_b.unsqueeze(2)), dim=2)
-        zs[:, -1, -1].zero_()
+        d = xs_b.size(-1)
+        half_n = xs_b.size(1)//2
+        zs = torch.cat((ys_b, xs_b), dim=2)
+        zs[:, half_n:, d:].zero_()
         if xs_b.shape[1] < ys_b.shape[1]:
             raise ValueError("Number of prompts in testing larger the training.")
         return zs
@@ -285,9 +287,9 @@ class ReluEncoder(nn.Module):
             key = k(H)
             value = v(H)
             
-            query = query.view(n_batch, n_points, self.n_head, self.n_embd).permute(0, 2, 1, 3) * head_mask
-            key = key.view(n_batch, n_points, self.n_head, self.n_embd).permute(0, 2, 1, 3) * head_mask
-            value = value.view(n_batch, n_points, self.n_head, self.n_embd).permute(0, 2, 1, 3) * head_mask
+            query = query.view(n_batch, n_points, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
+            key = key.view(n_batch, n_points, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
+            value = value.view(n_batch, n_points, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
             attn_weights =self.activation(torch.einsum('abid,abjd->abij', query, key))
 
 
@@ -311,8 +313,8 @@ class ReluEncoder(nn.Module):
             hidden_states.append(H)
         prediction = self._read_out(H)
         if return_hidden_states:
-            return prediction[:, (n_points-ys.shape[1]):n_points, 0], hidden_states
-        return prediction[:, (n_points-ys.shape[1]):n_points, 0]
+            return prediction[:, :, self.n_dims//2:], hidden_states
+        return prediction[:, :, self.n_dims//2:]
         
 
 class CustomLinear(nn.Module):

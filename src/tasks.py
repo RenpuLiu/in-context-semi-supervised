@@ -19,10 +19,19 @@ sigmoid = torch.nn.Sigmoid()
 bce_loss = torch.nn.BCELoss()
 
 
+# def cross_entropy(ys_pred, ys):
+#     output = sigmoid(ys_pred)
+#     target = (ys + 1) / 2
+#     return bce_loss(output, target)
+
+cross_entropy_loss = torch.nn.CrossEntropyLoss()
+
 def cross_entropy(ys_pred, ys):
-    output = sigmoid(ys_pred)
-    target = (ys + 1) / 2
-    return bce_loss(output, target)
+
+    ys_pred = ys_pred.view(-1, ys_pred.size(-1))  
+    ys = ys.argmax(dim=-1).view(-1)  
+
+    return cross_entropy_loss(ys_pred, ys)
 
 
 class Task:
@@ -54,6 +63,7 @@ def get_task_sampler(
 ):
     task_names_to_classes = {
         "linear_regression": LinearRegression,
+        "semi_classification": SemiClassification,
         "sparse_linear_regression": SparseLinearRegression,
         "linear_classification": LinearClassification,
         "noisy_linear_regression": NoisyLinearRegression,
@@ -93,10 +103,6 @@ class LinearRegression(Task):
             indices = torch.randperm(len(pool_dict["w"]))[:batch_size]
             self.w_b = pool_dict["w"][indices]
 
-    # def evaluate(self, xs_b):
-    #     w_b = self.w_b.to(xs_b.device)
-    #     ys_b = self.scale * (xs_b @ w_b)[:, :, 0]
-    #     return ys_b
 
     @staticmethod
     def generate_pool_dict(n_dims, num_tasks, **kwargs):  # ignore extra args
@@ -149,30 +155,23 @@ class SparseLinearRegression(LinearRegression):
     #     ys_b = self.scale * (xs_b @ w_b)[:, :, 0]
     #     return ys_b
     def evaluate(self, xs_b):
-        w_b = self.w_b.to(xs_b.device)
-        ys_b = self.scale * (xs_b @ w_b)[:, :, 0]
-        
-        # Define the standard deviation of the Gaussian noise
-        sigma = 0.2  # Adjust sigma according to your requirements
-        
-        # Generate Gaussian noise with the same shape as ys_b
-        noise = np.random.normal(0, sigma, ys_b.cpu().numpy().shape)
-        
-        # Convert the noise back to the same device as ys_b
-        noise = torch.tensor(noise, device=ys_b.device, dtype=ys_b.dtype)
-        
-        # Add the noise to ys_b
-        ys_b_noisy = ys_b + noise
-        
-        return ys_b_noisy
+        sigma = 0.2 
+        noise = np.random.normal(0, sigma, xs_b.cpu().numpy().shape)
+        noise = torch.tensor(noise, device=xs_b.device, dtype=xs_b.dtype)
 
+        w_b = self.w_b.to(xs_b.device)
+        ys_b = torch.matmul(w_b, xs_b+noise)
+        
+        return ys_b
+
+    
     @staticmethod
     def get_metric():
-        return squared_error
+        return cross_entropy
 
     @staticmethod
     def get_training_metric():
-        return mean_squared_error
+        return cross_entropy
 
 
 class LinearClassification(LinearRegression):
@@ -183,6 +182,53 @@ class LinearClassification(LinearRegression):
     @staticmethod
     def get_metric():
         return accuracy
+
+    @staticmethod
+    def get_training_metric():
+        return cross_entropy
+    
+
+class SemiClassification(Task):
+    def __init__(self, n_dims, batch_size, pool_dict=None, seeds=None, scale=1):
+        super(SemiClassification, self).__init__(n_dims, batch_size, pool_dict, seeds)
+        self.scale = scale
+
+        if pool_dict is None and seeds is None:
+            self.w_b, _ = torch.linalg.qr(torch.randn(self.b_size, self.n_dims, self.n_dims))
+        elif seeds is not None:
+            self.w_b = torch.zeros(self.b_size, self.n_dims, self.n_dims)
+            generator = torch.Generator()
+            assert len(seeds) == self.b_size
+            for i, seed in enumerate(seeds):
+                generator.manual_seed(seed)
+                self.w_b[i], _ = torch.linalg.qr(torch.randn(self.n_dims, self.n_dims, generator=generator))
+        else:
+            raise NotImplementedError
+        
+    def evaluate(self, xs_b):
+        sigma = 0.2 
+        noise = np.random.normal(0, sigma, xs_b.cpu().numpy().shape)
+        noise = torch.tensor(noise, device=xs_b.device, dtype=xs_b.dtype)
+
+        w_b = self.w_b.to(xs_b.device)
+        ys_b = torch.matmul(w_b, xs_b+noise)
+        
+        return ys_b
+
+    @staticmethod
+    def generate_pool_dict(n_dims, num_tasks, **kwargs):  # ignore extra args
+        raise NotImplementedError
+    
+    @staticmethod
+    def get_metric():
+        return cross_entropy
+
+    @staticmethod
+    def get_training_metric():
+        return cross_entropy
+
+
+
 
     @staticmethod
     def get_training_metric():
