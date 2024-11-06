@@ -52,7 +52,7 @@ def eval_batch(model, task_sampler, xs, xs_p=None):
             head_mask = torch.ones(model.n_head, model.n_point*2, model.n_embd)
             pred = model(xs.to(device), ys.to(device), head_mask = head_mask.to(device)).detach()
         else:
-            pred = model(xs.to(device), ys.to(device), head_mask = head_mask.to(device)).detach()
+            pred = model(xs.to(device), ys.to(device), head_mask = None).detach()
             # pred = model(xs.to(device), ys.to(device)).detach()
         metrics = task.get_metric()(pred.cpu(), ys)
     else:
