@@ -27,11 +27,12 @@ bce_loss = torch.nn.BCELoss()
 cross_entropy_loss = torch.nn.CrossEntropyLoss()
 
 def cross_entropy(ys_pred, ys):
-
-    ys_pred = ys_pred.view(-1, ys_pred.size(-1))  
-    ys = ys.argmax(dim=-1).view(-1)  
+    
+    ys_pred = ys_pred.reshape(-1, ys_pred.size(-1)) 
+    ys = ys.argmax(dim=-1).reshape(-1) 
 
     return cross_entropy_loss(ys_pred, ys)
+
 
 
 class Task:
