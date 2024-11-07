@@ -207,13 +207,13 @@ class SemiClassification(Task):
             raise NotImplementedError
         
     def evaluate(self, xs_b):
-        sigma = 0.2 
+        sigma = 0.4
         noise = np.random.normal(0, sigma, xs_b.cpu().numpy().shape)
         noise = torch.tensor(noise, device=xs_b.device, dtype=xs_b.dtype)
 
         w_b = self.w_b.to(xs_b.device)
 
-        ys_b = torch.matmul(xs_b+noise, w_b)
+        ys_b = torch.matmul(xs_b, w_b)+noise
         
         return ys_b
 
