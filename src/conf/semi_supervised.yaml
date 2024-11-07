@@ -4,7 +4,7 @@ inherit:
 model:
     family: SoftmaxEncoder
     n_embd: 6
-    n_layer: 1
+    n_layer: 2
     n_head: 1
     n_dims: 3
     n_point: 7
@@ -36,4 +36,4 @@ training:
 out_dir: ../models/semi_supervised
 
 wandb:
-    name: "semi_supervised_n_points_7"
+    name: "semi_supervised_points_7_layers_2"
