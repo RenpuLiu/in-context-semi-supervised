@@ -27,7 +27,7 @@ def train_step(model, xs, ys, head_mask, optimizer, loss_func):
     #     output = model(xs, ys, head_mask)
     output = model(xs, ys, head_mask)
     if 'SoftmaxEncoder' in model.name:
-        loss = loss_func(output, xs)
+        loss = loss_func(output[:, 5:, :], xs[:, 5:, :])
     else:
         loss = loss_func(output, ys)
     loss.backward()
