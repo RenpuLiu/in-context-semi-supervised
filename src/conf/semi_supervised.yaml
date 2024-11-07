@@ -7,7 +7,7 @@ model:
     n_layer: 1
     n_head: 1
     n_dims: 3
-    n_point: 15
+    n_point: 10
     n_positions: 101
 
 training:
