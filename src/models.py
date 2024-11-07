@@ -314,8 +314,8 @@ class SoftmaxEncoder(nn.Module):
             hidden_states.append(H)
         prediction = self._read_out(H)
         if return_hidden_states:
-            return prediction[:, :, self.n_dims//2:], hidden_states
-        return prediction[:, :, self.n_dims//2:]
+            return prediction[:, :, self.n_dims:], hidden_states
+        return prediction[:, :, self.n_dims:]
         
 
 class CustomLinear(nn.Module):
