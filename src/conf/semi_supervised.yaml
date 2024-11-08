@@ -7,7 +7,7 @@ model:
     n_layer: 2
     n_head: 1
     n_dims: 3
-    n_point: 25
+    n_point: 20
     n_positions: 101
 
 training:
@@ -36,4 +36,4 @@ training:
 out_dir: ../models/semi_supervised
 
 wandb:
-    name: "semi_supervised_points_25_layers_2"
+    name: "semi_supervised_points_20_layers_2"
