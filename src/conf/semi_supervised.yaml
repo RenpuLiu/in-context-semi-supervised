@@ -36,4 +36,4 @@ training:
 out_dir: ../models/semi_supervised
 
 wandb:
-    name: "semi_supervised_points_50_layers_1_dim_3"
+    name: "semi_supervised_points_50_layers_1_dim_3_steps_200001"
