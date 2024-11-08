@@ -3,10 +3,10 @@ inherit:
 
 model:
     family: SoftmaxEncoder
-    n_embd: 4
+    n_embd: 6
     n_layer: 2
     n_head: 1
-    n_dims: 2
+    n_dims: 3
     n_point: 7
     n_positions: 101
 
@@ -36,4 +36,4 @@ training:
 out_dir: ../models/semi_supervised
 
 wandb:
-    name: "semi_supervised_points_7_layers_2_dim_2"
+    name: "semi_supervised_points_7_layers_2_dim_3"
