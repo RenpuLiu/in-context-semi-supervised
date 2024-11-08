@@ -111,6 +111,8 @@ def train(model, args):
         )
         task = task_sampler(**task_sampler_args)
         ys = task.evaluate(xs)
+        if i == 1:
+            print(xs[0],ys[0])
 
         loss_func = task.get_training_metric()
 
