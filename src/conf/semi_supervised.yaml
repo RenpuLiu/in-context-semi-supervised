@@ -7,7 +7,7 @@ model:
     n_layer: 2
     n_head: 1
     n_dims: 3
-    n_point: 30
+    n_point: 50
     n_positions: 101
 
 training:
@@ -22,8 +22,8 @@ training:
     train_steps: 100001
     curriculum:
         points:
-            start: 30
-            end: 30
+            start: 50
+            end: 50
             inc: 2
             interval: 2000
         dims:
@@ -36,4 +36,4 @@ training:
 out_dir: ../models/semi_supervised
 
 wandb:
-    name: "semi_supervised_points_7_layers_2_dim_3"
+    name: "semi_supervised_points_50_layers_2_dim_3"
