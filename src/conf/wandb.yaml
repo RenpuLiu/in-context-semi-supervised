@@ -1,5 +1,5 @@
 wandb:
-    project: semi_supervised_unlabel_2_layers_50_nodes_testing
+    project: semi_supervised_unlabel
     entity: renpu
     notes:
     log_every_steps: 100
