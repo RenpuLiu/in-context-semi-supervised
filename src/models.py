@@ -207,6 +207,43 @@ def get_activation(activation="relu"):
         return lambda x: F.softmax(x, dim=-1)
     else:
         raise NotImplementedError
+
+
+class SubBlockLinear(nn.Module):
+    def __init__(self, in_features, out_features, sub_in_features, sub_out_features, bias=False):
+        super(SubBlockLinear, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.sub_in_features = sub_in_features
+        self.sub_out_features = sub_out_features
+
+        # Define the trainable sub-block weight
+        self.sub_weight = nn.Parameter(torch.Tensor(sub_out_features, sub_in_features))
+        if bias:
+            self.bias = nn.Parameter(torch.Tensor(out_features))
+        else:
+            self.register_parameter('bias', None)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        # Initialize the sub-block weight
+        nn.init.kaiming_uniform_(self.sub_weight, a=math.sqrt(5))
+        if self.bias is not None:
+            nn.init.zeros_(self.bias)
+
+    def forward(self, input):
+        # Compute the part of the input that corresponds to the sub-block
+        input_sub = input[..., :self.sub_in_features]
+        # Compute the output for the sub-block
+        output_sub = F.linear(input_sub, self.sub_weight)
+        # Initialize the full output tensor with zeros
+        output = torch.zeros(*input.shape[:-1], self.out_features, device=input.device, dtype=input.dtype)
+        # Place the sub-block output into the upper-left corner of the output tensor
+        output[..., :self.sub_out_features] = output_sub
+        # Add bias if applicable
+        if self.bias is not None:
+            output += self.bias
+        return output
     
 
 
@@ -238,8 +275,22 @@ class SoftmaxEncoder(nn.Module):
         self._lns_1 = nn.ModuleList()
         self._lns_2 = nn.ModuleList()
         for _ in range(n_layer):
-            self._queries.append(nn.Linear(n_embd, self.n_head*n_embd, bias=False))
-            self._keys.append(nn.Linear(n_embd, self.n_head*n_embd, bias=False))
+            # self._queries.append(nn.Linear(n_embd, self.n_head*n_embd, bias=False))
+            # self._keys.append(nn.Linear(n_embd, self.n_head*n_embd, bias=False))
+            self._queries.append(SubBlockLinear(
+                in_features = n_embd,
+                out_features = n_head * n_embd,
+                sub_in_features = self.n_dims,
+                sub_out_features = self.n_dims,
+                bias=False
+            ))
+            self._keys.append(SubBlockLinear(
+                in_features = n_embd,
+                out_features = n_head * n_embd,
+                sub_in_features = self.n_dims,
+                sub_out_features = self.n_dims,
+                bias=False
+            ))
             self._values.append(nn.Linear(n_embd, self.n_head*n_embd, bias=False))
             self._lns_1.append(nn.LayerNorm([self.n_embd]))
             self._mlps.append(
