@@ -12,7 +12,7 @@
 ```
 3. Run the following code for our main experiments.
 ```
-     python train.py --config conf/decoder_sparse_regression.yaml
+     python train.py --config conf/semi_supervised.yaml
 ```
 ## Our code is based on Garg's work
 
