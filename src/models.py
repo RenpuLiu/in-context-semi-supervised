@@ -277,20 +277,7 @@ class SoftmaxEncoder(nn.Module):
         for _ in range(n_layer):
             self._queries.append(nn.Linear(n_embd, self.n_head*n_embd, bias=False))
             self._keys.append(nn.Linear(n_embd, self.n_head*n_embd, bias=False))
-            # self._queries.append(SubBlockLinear(
-            #     in_features = n_embd,
-            #     out_features = n_head * n_embd,
-            #     sub_in_features = self.n_dims,
-            #     sub_out_features = self.n_dims,
-            #     bias=False
-            # ))
-            # self._keys.append(SubBlockLinear(
-            #     in_features = n_embd,
-            #     out_features = n_head * n_embd,
-            #     sub_in_features = self.n_dims,
-            #     sub_out_features = self.n_dims,
-            #     bias=False
-            # ))
+
             self._values.append(nn.Linear(n_embd, self.n_head*n_embd, bias=False))
             self._lns_1.append(nn.LayerNorm([self.n_embd]))
             self._mlps.append(
@@ -350,17 +337,17 @@ class SoftmaxEncoder(nn.Module):
 
             attn_weights = torch.sum(attn_weights, dim=1)
 
-            # if self.normalize_attn:
-            #     attn_weights = attn_weights/n_points
+            if self.normalize_attn:
+                attn_weights = attn_weights/n_points
             H = H + attn_weights
 
-            # if self.layernorm:
-            #     H = ln1(H)
+            if self.layernorm:
+                H = ln1(H)
 
             if self.mlp:
                 H = H + mlp(H)
-                # if self.layernorm:
-                #     H = ln2(H)
+                if self.layernorm:
+                    H = ln2(H)
 
             hidden_states.append(H)
         prediction = self._read_out(H)
