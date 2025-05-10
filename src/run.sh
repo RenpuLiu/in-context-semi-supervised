@@ -1,3 +1,4 @@
+source ~/miniconda3/etc/profile.d/conda.sh
 conda activate in-context-learning
 
 UNLAB_LIST=(0 1 2 3 4 5 6 7 8 9 10)
