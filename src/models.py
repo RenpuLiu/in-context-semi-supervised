@@ -337,8 +337,8 @@ class SoftmaxEncoder(nn.Module):
 
             attn_weights = torch.sum(attn_weights, dim=1)
 
-            if self.normalize_attn:
-                attn_weights = attn_weights/n_points
+            # if self.normalize_attn:
+            #     attn_weights = attn_weights/n_points
             H = H + attn_weights
 
             if self.layernorm:
@@ -346,8 +346,8 @@ class SoftmaxEncoder(nn.Module):
 
             if self.mlp:
                 H = H + mlp(H)
-                if self.layernorm:
-                    H = ln2(H)
+                # if self.layernorm:
+                #     H = ln2(H)
 
             hidden_states.append(H)
         prediction = self._read_out(H)
