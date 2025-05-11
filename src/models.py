@@ -28,7 +28,7 @@ def build_model(conf):
     elif conf.family == "SoftmaxEncoder":
         # backward compatible
         if 'encoder_activation' not in conf.keys():
-            conf.encoder_activation = "relu"
+            conf.encoder_activation = "softmax"
         if 'normalize_attn' not in conf.keys():
             conf.normalize_attn = True
 
@@ -263,7 +263,6 @@ class SoftmaxEncoder(nn.Module):
         self.activation = get_activation(activation)
         self.normalize_attn = normalize_attn
         self.layernorm = layernorm
-        print("layernorm: ", self.layernorm, "activation:", self.activation, "normalize_attn: ", self.normalize_attn)
         self.mlp = mlp
         self.n_point = n_point
         # layers
