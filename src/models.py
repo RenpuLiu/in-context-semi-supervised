@@ -263,6 +263,7 @@ class SoftmaxEncoder(nn.Module):
         self.activation = get_activation(activation)
         self.normalize_attn = normalize_attn
         self.layernorm = layernorm
+        print("layernorm: ", self.layernorm, "activation:", self.activation, "normalize_attn: ", self.normalize_attn)
         self.mlp = mlp
         self.n_point = n_point
         # layers
