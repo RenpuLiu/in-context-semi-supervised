@@ -369,6 +369,7 @@ class SoftmaxEncoder(nn.Module):
         self.n_layer = n_layer
         self.activation = get_activation(activation)
         self.normalize_attn = normalize_attn
+        self.return_cot = return_cot
         self.layernorm = layernorm
         self.mlp = mlp
         self.n_point = n_point
@@ -448,6 +449,8 @@ class SoftmaxEncoder(nn.Module):
 
         for r_step in range(self.n_cot):
             H_input = H.clone()
+            print("###############", H.shape)
+            
             for (q, k, v, ln1, mlp, ln2) in zip(
                 self._queries, self._keys, self._values,
                 self._lns_1, self._mlps, self._lns_2,
@@ -455,14 +458,12 @@ class SoftmaxEncoder(nn.Module):
                 query = q(H)
                 key = k(H)
                 value = v(H)
-                print("###############", H.shape)
+                
                 query = query.view(n_batch, n_points + (r_step)*self.n_dims, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
                 key = key.view(n_batch, n_points + (r_step)*self.n_dims, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
                 value = value.view(n_batch, n_points + + (r_step)*self.n_dims, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
                 attn_weights =self.activation(torch.einsum('abid,abjd->abij', query, key))
-
-
-
+                
                 attn_weights = torch.einsum('abij,abjd->abid', attn_weights, value)
 
                 attn_weights = torch.sum(attn_weights, dim=1)
@@ -486,7 +487,7 @@ class SoftmaxEncoder(nn.Module):
 
             hidden_states.append(H)
         prediction = self._read_out(H[:,:self.n_point, :])
-        if return_cot:
+        if self.return_cot:
             return prediction[:, :, self.n_dims:], [cot_list[i][:, :, -self.n_dims:] for i in range(self.n_cot)]
         return prediction[:, :, self.n_dims:]
         
