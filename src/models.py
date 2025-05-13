@@ -435,7 +435,7 @@ class SoftmaxEncoder(nn.Module):
         if xs_b.shape[1] < ys_b.shape[1]:
             raise ValueError("Number of prompts in testing larger than training.")
 
-        return zs_appended
+        return zs
         
 
     def forward(self, xs, ys, head_mask, inds=None, return_hidden_states=False):
