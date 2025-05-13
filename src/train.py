@@ -87,8 +87,8 @@ def train_step(model, xs, ys, head_mask, optimizer, loss_func):
     if 'SoftmaxEncoder' in model.name:
         loss_1 = loss_func(output[:,5:,:], xs[:,5:,:])
         xs_proc = xs.clone()
-        xs_proc[:, half_n:, :].zero_()
-        loss_2, _ = oracle_em_loss(xs_proc[:, half_n:, :].zero_(), ys, cot)
+        xs_proc[:, 5:, :].zero_()
+        loss_2, _ = oracle_em_loss(xs_proc[:, 5:, :].zero_(), ys, cot)
         loss = loss_1+loss_2
         # loss = loss_func(output, xs)
     else:
