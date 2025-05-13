@@ -374,7 +374,7 @@ class SoftmaxEncoder(nn.Module):
         self.n_point = n_point
         self.n_cot = n_cot
         # layers
-        self._read_in = nn.Linear(2*n_dims, n_embd) # Modifty the input dimension to 2*n_dims
+        self._read_in = nn.Linear(n_embd, n_embd) # Modifty the input dimension to 2*n_dims
         
         self._queries = nn.ModuleList()
         self._keys = nn.ModuleList()
