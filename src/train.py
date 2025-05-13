@@ -173,13 +173,15 @@ def train_step(model, xs, ys, head_mask, optimizer, loss_func):
         xs_proc[:, 5:, :].zero_()
 
         loss_2, _ = oracle_em_loss(xs_proc, ys, cot)
-        loss = loss_1+loss_2
+        
+        # loss = loss_1+loss_2
+        loss = loss_1
         # loss = loss_func(output, xs)
     else:
         loss = loss_func(output, ys)
     loss.backward()
     optimizer.step()
-    return loss.detach().item(), output.detach(), loss_1, loss_2
+    return loss.detach().item(), output.detach(), loss_1, loss_1
 
 
 def sample_seeds(total_seeds, count):
