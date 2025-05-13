@@ -467,9 +467,16 @@ class SoftmaxEncoder(nn.Module):
                 key = k(H)
                 value = v(H)
                 
-                query = query.view(n_batch, n_points + (r_step)*self.n_dims, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
-                key = key.view(n_batch, n_points + (r_step)*self.n_dims, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
-                value = value.view(n_batch, n_points + + (r_step)*self.n_dims, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
+                # Here ################################################################
+                # query = query.view(n_batch, n_points + (r_step)*self.n_dims, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
+                # key = key.view(n_batch, n_points + (r_step)*self.n_dims, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
+                # value = value.view(n_batch, n_points + (r_step)*self.n_dims, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
+                # Here ################################################################
+                query = query.view(n_batch, n_points , self.n_head, self.n_embd).permute(0, 2, 1, 3) 
+                key = key.view(n_batch, n_points , self.n_head, self.n_embd).permute(0, 2, 1, 3) 
+                value = value.view(n_batch, n_points , self.n_head, self.n_embd).permute(0, 2, 1, 3) 
+
+                
                 attn_weights =self.activation(torch.einsum('abid,abjd->abij', query, key))
                 
                 attn_weights = torch.einsum('abij,abjd->abid', attn_weights, value)
