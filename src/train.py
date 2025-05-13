@@ -19,51 +19,83 @@ import wandb
 torch.backends.cudnn.benchmark = True
 
 
+
+def oracle_em_loss(xs, ys, cot, eps=1e-8, *, random_init=True):
+    """
+    Batched Oracle‑EM loss against a Chain‑of‑Thought (CoT) trajectory.
+
+    Parameters
+    ----------
+    xs : (B, N, K) tensor
+        One‑hot class labels for the first L positions in each sequence.
+        All‑zero rows correspond to unlabelled samples.
+    ys : (B, N, D) tensor
+        Data sampled from a K‑component Gaussian mixture (identity covariance).
+        In the toy setting we take D == K.
+    cot : list[T] of (B, N, D) tensors
+        Model‑predicted per‑sample means after each of the T CoT steps.
+    eps : float, optional (default 1e‑8)
+        Numerical floor to avoid division by zero when normalising.
+    random_init : bool, optional (default True)
+        • True  – initialise EM by picking K random samples per batch.  
+        • False – moment initialisation from whatever labels exist in `xs`
+                  (may be ill‑conditioned if some classes have no labels).
+
+    Returns
+    -------
+    total_loss : scalar tensor
+        Σ_{t=0}^{T‑1}  MSE( EM means after step t, cot[t] )
+        Ready for back‑prop if you optimise the CoT model.
+    mus_trace  : list[T] of (B, K, D) tensors
+        Component‑mean trajectory after every EM M‑step.
+    """
+    B, N, D = ys.shape
+    K       = xs.size(-1)
+    T       = len(cot)
+
+    if random_init:
+        # choose K distinct indices per batch for a k‑means‑ish start
+        idx = torch.multinomial(torch.ones(B, N, device=ys.device), K, False)  # (B,K)
+        mus = ys[torch.arange(B).unsqueeze(1), idx]                            # (B,K,D)
+    else:
+        counts = xs.sum(dim=1).clamp_min(eps)           # (B,K)
+        mus    = (xs.transpose(1, 2) @ ys) / counts.unsqueeze(-1)  # (B,K,D)
+
+    total_loss, mus_trace = 0.0, []
+
+    for t in range(T):
+        # ============ E‑step ==================================================
+        #   r_{b,n,k} ∝ exp(‑½‖y_{b,n} − μ_{b,k}‖²)
+        dist = ((ys.unsqueeze(2) - mus.unsqueeze(1))**2).sum(-1)   # (B,N,K)
+        r    = torch.softmax(-0.5 * dist, dim=-1)                  # (B,N,K)
+
+        # ============ M‑step ==================================================
+        r_sum = r.sum(dim=1).clamp_min(eps)                        # (B,K)
+        mus   = (r.transpose(1, 2) @ ys) / r_sum.unsqueeze(-1)     # (B,K,D)
+        mus_trace.append(mus.detach())
+
+        # ============ step loss ==============================================
+        mu_expanded = torch.einsum('bnk,bkd->bnd', r, mus)         # (B,N,D)
+        total_loss  = total_loss + F.mse_loss(mu_expanded, cot[t])
+    total_loss = total_loss/T
+
+    return total_loss, mus_trace
+
 def train_step(model, xs, ys, head_mask, optimizer, loss_func):
     optimizer.zero_grad()
     output, cot = model(xs, ys, head_mask)
     if 'SoftmaxEncoder' in model.name:
-        loss = loss_func(output[:,5:,:], xs[:,5:,:])
+        loss_1 = loss_func(output[:,5:,:], xs[:,5:,:])
+        xs_proc = xs.clone()
+        xs_proc[:, half_n:, :].zero_()
+        loss_2, _ = oracle_em_loss(xs_proc[:, half_n:, :].zero_(), ys, cot)
+        loss = loss_1+loss_2
         # loss = loss_func(output, xs)
     else:
         loss = loss_func(output, ys)
     loss.backward()
     optimizer.step()
     return loss.detach().item(), output.detach()
-
-
-def oracle_em_loss(xs, ys, cot, eps=1e-8):
-    """
-    xs  : (B, N, K) one‑hot labels             – oracle initialiser only
-    ys  : (B, N, D) mixture samples            – each class ↔ its basis vector
-    cot : list[T] of (B, N, D) model outputs   – what we compare against
-    """
-    B, N, D = ys.shape
-    K       = xs.size(-1)          # number of components
-    T       = len(cot)
-
-    counts = xs.sum(dim=1).clamp_min(eps)                     # (B, K)
-    mus    = (xs.transpose(1, 2) @ ys) / counts.unsqueeze(-1) # (B, K, D)
-
-    total_loss, mus_trace = 0.0, []
-
-    for t in range(T):
-        # -------- E‑step ------------------------------------------------------
-        dist = ((ys.unsqueeze(2) - mus.unsqueeze(1))**2).sum(-1)   # (B,N,K)
-        logp = -0.5 * dist
-        r    = torch.softmax(logp, dim=-1)                         # (B,N,K)
-
-        # -------- M‑step ------------------------------------------------------
-        r_sum = r.sum(dim=1).clamp_min(eps)                        # (B,K)
-        mus   = (r.transpose(1, 2) @ ys) / r_sum.unsqueeze(-1)     # (B,K,D)
-
-        mus_trace.append(mus.detach())
-
-        # -------- loss for this step -----------------------------------------
-        mu_expanded = torch.einsum('bnk,bkd->bnd', r, mus)         # (B,N,D)
-        total_loss += F.mse_loss(mu_expanded, cot[t])
-
-    return total_loss, mus_trace
 
 
 def sample_seeds(total_seeds, count):
