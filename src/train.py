@@ -172,7 +172,7 @@ def train_step(model, xs, ys, head_mask, optimizer, loss_func):
         xs_proc = xs.clone()
         xs_proc[:, 5:, :].zero_()
 
-        loss_2, _ = oracle_em_loss(xs_proc, ys, cot)
+        # loss_2, _ = oracle_em_loss(xs_proc, ys, cot)
         
         # loss = loss_1+loss_2
         loss = loss_1
