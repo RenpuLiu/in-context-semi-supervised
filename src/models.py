@@ -456,9 +456,9 @@ class SoftmaxEncoder(nn.Module):
                 key = k(H)
                 value = v(H)
                 print("###############", H.shape)
-                query = query.view(n_batch, n_points + (r_step+1)*self.n_dims, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
-                key = key.view(n_batch, n_points + (r_step+1)*self.n_dims, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
-                value = value.view(n_batch, n_points + + (r_step+1)*self.n_dims, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
+                query = query.view(n_batch, n_points + (r_step)*self.n_dims, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
+                key = key.view(n_batch, n_points + (r_step)*self.n_dims, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
+                value = value.view(n_batch, n_points + + (r_step)*self.n_dims, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
                 attn_weights =self.activation(torch.einsum('abid,abjd->abij', query, key))
 
 
