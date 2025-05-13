@@ -441,6 +441,7 @@ class SoftmaxEncoder(nn.Module):
         hidden_states = []
         
         H = self._read_in(zs)
+        print("input sequence shape: ", H.shape)
         hidden_states.append(H)
 
         cot_list = []
