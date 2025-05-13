@@ -175,6 +175,7 @@ def train_step(model, xs, ys, head_mask, optimizer, loss_func):
     
     optimizer.zero_grad()
     output, cot = model(xs, ys, head_mask)
+    print("#############################", xs.shape, ys.shape)
     if 'SoftmaxEncoder' in model.name:
         loss_1 = loss_func(output[:,5:,:], xs[:,5:,:])
         xs_proc = xs.clone()
