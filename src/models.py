@@ -398,8 +398,8 @@ class SoftmaxEncoder(nn.Module):
             self._lns_2.append(nn.LayerNorm([self.n_embd]))
         self._read_out = nn.Linear(n_embd, n_embd)
 
-    @staticmethod
-    def _combine(xs_b, ys_b):
+
+    def _combine(self, xs_b, ys_b):
         """
         Stack label vectors xs_b and data vectors ys_b along feature dim,
         zero‑out the unlabeled part, then append padding tokens.
