@@ -288,8 +288,7 @@ def train(model, args):
         if i % args.wandb.log_every_steps == 0 and not args.test_run:
             wandb.log(
                 {
-                    "overall_loss": loss,
-                    "prediction_loss": loss_1,
+                    "overall_loss": loss_1,
                     "CoT_loss": loss_2,
                     "excess_loss": loss / baseline_loss,
                     # "pointwise/loss": dict(
