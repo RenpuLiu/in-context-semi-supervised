@@ -107,16 +107,19 @@ def _moment_init(xs, ys, eps=1e-8):
 
 def _permute_to_match(mus_b, target_b):
     """
-    Align mus_b to target_b (both K×D) and RETURN the permuted copy *and*
-    the permutation indices so we can update mus in‑place.
+    Align mus_b (K×D) to target_b (K×D) by minimum‑MSE permutation.
+    Returns the permuted mus_b and the permutation indices.
     """
-    K = mus_b.size(0)
-    cost = ((mus_b.unsqueeze(1) - target_b.unsqueeze(0))**2).sum(-1).cpu().numpy()
-    row, col = linear_sum_assignment(cost)          # row[i] ↔ col[i]
-    # build array: perm[j] = row[index where col==j]
+    # cost[i,j] = ‖mus_b[i] − target_b[j]‖²
+    cost = (
+        (mus_b.unsqueeze(1) - target_b.unsqueeze(0)).pow(2).sum(-1)
+        .detach()               # <-- break autograd graph
+        .cpu()
+        .numpy()
+    )
+    row, col = linear_sum_assignment(cost)          # Hungarian
     perm = torch.as_tensor(row[np.argsort(col)], device=mus_b.device)
-    mus_perm = mus_b[perm]                          # now ordered like target_b
-    return mus_perm, perm
+    return mus_b[perm], perm
 
 
 def oracle_em_loss(xs, ys, cot, eps: float = 1e-8):
