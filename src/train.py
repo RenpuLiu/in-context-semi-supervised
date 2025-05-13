@@ -77,6 +77,7 @@ def oracle_em_loss(xs, ys, cot, eps=1e-8, *, random_init=True):
 
         # ============ step loss ==============================================
         mu_expanded = torch.einsum('bnk,bkd->bnd', r, mus)         # (B,N,D)
+        print("###############", mu_expanded.shape, cot[t].shape)
         total_loss  = total_loss + F.mse_loss(mu_expanded, cot[t])
     total_loss = total_loss/T
 
