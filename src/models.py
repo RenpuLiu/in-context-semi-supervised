@@ -423,12 +423,14 @@ class SoftmaxEncoder(nn.Module):
         zs = torch.cat((zs, xs_b.new_zeros(xs_b.size())), dim=2)   # (B,N,4d)
         zs = torch.cat((zs, xs_b.new_zeros(xs_b.size())), dim=2)
 
-        # 4. pad with self.n_dims empty tokens for CoT steps
-        zeros_pad = zs.new_zeros(zs.size(0), self.n_dims, zs.size(2))
-        zs_appended = torch.cat([zs, zeros_pad], dim=1)
+        
+        # Here ################################################################
+        # zeros_pad = zs.new_zeros(zs.size(0), self.n_dims, zs.size(2))
+        # zs_appended = torch.cat([zs, zeros_pad], dim=1)
 
-        eye = torch.eye(d, device=zs_appended.device)          # (d, d) on the right device
-        zs_appended[:, N : N + d, 2*d : 3*d] = eye.unsqueeze(0).expand(B, -1, -1)
+        # eye = torch.eye(d, device=zs_appended.device)          
+        # zs_appended[:, N : N + d, 2*d : 3*d] = eye.unsqueeze(0).expand(B, -1, -1)
+        # Here ################################################################
 
         if xs_b.shape[1] < ys_b.shape[1]:
             raise ValueError("Number of prompts in testing larger than training.")
@@ -481,15 +483,17 @@ class SoftmaxEncoder(nn.Module):
 
                 if self.mlp:
                     H = H + mlp(H)
-                
-            H_cot = H[:, -self.n_dims:, :].clone()
+                    
+            # Here ################################################################
+            # H_cot = H[:, -self.n_dims:, :].clone()
 
-            cot_list.append(H_cot)
+            # cot_list.append(H_cot)
 
-            H = torch.cat([H_input, H_cot], dim=1)
+            # H = torch.cat([H_input, H_cot], dim=1)
             
-            eye = torch.eye(self.n_dims, device=H.device)          # (d, d) on the right device
-            H[:, -self.n_dims : , 2*self.n_dims : 3*self.n_dims] = eye.unsqueeze(0).expand(n_batch, -1, -1)
+            # eye = torch.eye(self.n_dims, device=H.device)          # (d, d) on the right device
+            # H[:, -self.n_dims : , 2*self.n_dims : 3*self.n_dims] = eye.unsqueeze(0).expand(n_batch, -1, -1)
+            # Here ################################################################
 
             
 
@@ -497,7 +501,10 @@ class SoftmaxEncoder(nn.Module):
             hidden_states.append(H)
         prediction = self._read_out(H[:,:self.n_point, :])
         if self.return_cot:
-            return prediction[:, :, self.n_dims:self.n_dims*2], [cot_list[i][:, :, -self.n_dims:] for i in range(self.n_cot)]
+            # Here ################################################################
+            # return prediction[:, :, self.n_dims:self.n_dims*2], [cot_list[i][:, :, -self.n_dims:] for i in range(self.n_cot)]
+            # Here ################################################################
+            return prediction[:, :, self.n_dims:self.n_dims*2], []
         return prediction[:, :, self.n_dims:]
         
 
