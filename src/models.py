@@ -449,7 +449,7 @@ class SoftmaxEncoder(nn.Module):
 
         for r_step in range(self.n_cot):
             H_input = H.clone()
-            print("###############", H.shape)
+            # print("###############", H.shape)
             
             for (q, k, v, ln1, mlp, ln2) in zip(
                 self._queries, self._keys, self._values,
