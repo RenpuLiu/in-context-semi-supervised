@@ -401,21 +401,33 @@ class SoftmaxEncoder(nn.Module):
     @staticmethod
     def _combine(xs_b, ys_b):
         """
-        Directly stack the x's and y's into the same location
-        resulting sequence would be Bx(N+1)x(d+1), where (N+1)-th token is test
-        """
-        d = xs_b.size(-1)
-        # half_n = xs_b.size(1)//3
-        half_n = 5
-        zs = torch.cat((ys_b, xs_b), dim=2)
-        zs[:, half_n:, d:].zero_()
-        zs = torch.cat((zs, torch.zeros(xs_b.size())), dim=2)
-        zeros = zs.new_zeros(zs.size(0), self.n_dims, zs.size(2))
+        Stack label vectors xs_b and data vectors ys_b along feature dim,
+        zero‑out the unlabeled part, then append padding tokens.
 
-        zs_appended = torch.cat([zs, zeros], dim=1)
+        Resulting shape:  B × (N + self.n_dims) × (2d + d)  (see below)
+        """
+        device, dtype = xs_b.device, xs_b.dtype
+        d       = xs_b.size(-1)          # feature dim == #classes
+        half_n  = 5                      # #labelled examples
+
+        # 1. concatenate [y | x] -> (B,N,2d)
+        zs = torch.cat((ys_b, xs_b), dim=2)
+
+        # 2. zero unlabeled rows (positions half_n … N‑1)
+        zs[:, half_n:, d:].zero_()       # keep only first d dims of xs
+
+        # 3. append an all‑zero copy of xs_b for the test token
+        zs = torch.cat((zs, xs_b.new_zeros(xs_b.size())), dim=2)   # (B,N,3d)
+
+        # 4. pad with self.n_dims empty tokens for CoT steps
+        zeros_pad = zs.new_zeros(zs.size(0), self.n_dims, zs.size(2))
+        zs_appended = torch.cat([zs, zeros_pad], dim=1)
+
         if xs_b.shape[1] < ys_b.shape[1]:
-            raise ValueError("Number of prompts in testing larger the training.")
+            raise ValueError("Number of prompts in testing larger than training.")
+
         return zs_appended
+        
 
     def forward(self, xs, ys, head_mask, inds=None, return_hidden_states=False):
         if inds is None:
