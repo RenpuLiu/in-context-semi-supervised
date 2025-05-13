@@ -170,6 +170,7 @@ def oracle_em_loss(xs, ys, cot, eps: float = 1e-8):
 
 
 def train_step(model, xs, ys, head_mask, optimizer, loss_func):
+    print("#############################", xs.size, ys.size)
     optimizer.zero_grad()
     output, cot = model(xs, ys, head_mask)
     if 'SoftmaxEncoder' in model.name:
