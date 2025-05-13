@@ -304,7 +304,7 @@ def train(model, args):
         curriculum.update()
         #if i <= last_epoch and i > 300000:
         #    lr_scheduler.step()
-        pbar.set_description(f"loss {loss}")
+        pbar.set_description(f"Prediction loss： {loss_1}")
         if i % args.training.save_every_steps == 0 and not args.test_run:
             training_state = {
                 "model_state_dict": model.state_dict(),
