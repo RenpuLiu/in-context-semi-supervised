@@ -171,16 +171,17 @@ def oracle_em_loss(xs, ys, cot, eps: float = 1e-8):
 
 def train_step(model, xs, ys, head_mask, optimizer, loss_func):
     
-    print("#############################", xs.shape, ys.shape)
     
     optimizer.zero_grad()
     output, cot = model(xs, ys, head_mask)
-    print("#############################", xs.shape, ys.shape)
+    
     if 'SoftmaxEncoder' in model.name:
         loss_1 = loss_func(output[:,5:,:], xs[:,5:,:])
+        print("#############################", xs.shape, ys.shape)
         xs_proc = xs.clone()
         xs_proc[:, 5:, :].zero_()
-        loss_2, _ = oracle_em_loss(xs_proc[:, 5:, :].zero_(), ys, cot)
+        print("#############################", xs_proc.shape, ys.shape)
+        loss_2, _ = oracle_em_loss(xs_proc, ys, cot)
         loss = loss_1+loss_2
         # loss = loss_func(output, xs)
     else:
