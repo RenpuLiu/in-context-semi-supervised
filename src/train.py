@@ -21,67 +21,137 @@ torch.backends.cudnn.benchmark = True
 
 
 
-def oracle_em_loss(xs, ys, cot, eps=1e-8, *, random_init=True):
+# def oracle_em_loss(xs, ys, cot, eps=1e-8, *, random_init=True):
+#     """
+#     Batched Oracle‑EM loss against a Chain‑of‑Thought (CoT) trajectory.
+
+#     Parameters
+#     ----------
+#     xs : (B, N, K) tensor
+#         One‑hot class labels for the first L positions in each sequence.
+#         All‑zero rows correspond to unlabelled samples.
+#     ys : (B, N, D) tensor
+#         Data sampled from a K‑component Gaussian mixture (identity covariance).
+#         In the toy setting we take D == K.
+#     cot : list[T] of (B, N, D) tensors
+#         Model‑predicted per‑sample means after each of the T CoT steps.
+#     eps : float, optional (default 1e‑8)
+#         Numerical floor to avoid division by zero when normalising.
+#     random_init : bool, optional (default True)
+#         • True  – initialise EM by picking K random samples per batch.  
+#         • False – moment initialisation from whatever labels exist in `xs`
+#                   (may be ill‑conditioned if some classes have no labels).
+
+#     Returns
+#     -------
+#     total_loss : scalar tensor
+#         Σ_{t=0}^{T‑1}  MSE( EM means after step t, cot[t] )
+#         Ready for back‑prop if you optimise the CoT model.
+#     mus_trace  : list[T] of (B, K, D) tensors
+#         Component‑mean trajectory after every EM M‑step.
+#     """
+#     B, N, D = ys.shape
+#     K       = xs.size(-1)
+#     T       = len(cot)
+
+#     if random_init:
+#         # choose K distinct indices per batch for a k‑means‑ish start
+#         idx = torch.multinomial(torch.ones(B, N, device=ys.device), K, False)  # (B,K)
+#         mus = ys[torch.arange(B).unsqueeze(1), idx]                            # (B,K,D)
+#     else:
+#         counts = xs.sum(dim=1).clamp_min(eps)           # (B,K)
+#         mus    = (xs.transpose(1, 2) @ ys) / counts.unsqueeze(-1)  # (B,K,D)
+
+#     total_loss, mus_trace = 0.0, []
+
+#     for t in range(T):
+#         # ============ E‑step ==================================================
+#         #   r_{b,n,k} ∝ exp(‑½‖y_{b,n} − μ_{b,k}‖²)
+#         dist = ((ys.unsqueeze(2) - mus.unsqueeze(1))**2).sum(-1)   # (B,N,K)
+#         r    = torch.softmax(-0.5 * dist, dim=-1)                  # (B,N,K)
+
+#         # ============ M‑step ==================================================
+#         r_sum = r.sum(dim=1).clamp_min(eps)                        # (B,K)
+#         mus   = (r.transpose(1, 2) @ ys) / r_sum.unsqueeze(-1)     # (B,K,D)
+#         mus_trace.append(mus.detach())
+
+#         # ============ step loss ==============================================
+#         mu_expanded = torch.einsum('bnk,bkd->bnd', r, mus)         # (B,N,D)
+#         print("###############", mu_expanded.shape, cot[t].shape)
+#         total_loss  = total_loss + F.mse_loss(mu_expanded, cot[t])
+#     total_loss = total_loss/T
+
+#     return total_loss, mus_trace
+
+
+import torch, numpy as np, torch.nn.functional as F
+from scipy.optimize import linear_sum_assignment   # SciPy is on Colab
+
+
+def _moment_init(xs, ys, eps=1e-8):
+    """Label‑moment start; random fallback for unlabeled classes."""
+    B, N, K = xs.shape
+    D       = ys.size(-1)
+    counts  = xs.sum(dim=1)                         # (B,K)
+    mus     = torch.zeros(B, K, D, device=ys.device)
+
+    mask = counts > 0
+    if mask.any():
+        mus[mask] = (xs.transpose(1, 2) @ ys)[mask] / counts.masked_fill(~mask, 1.).unsqueeze(-1)[mask]
+
+    if (~mask).any():                              # random fallback
+        rand_idx = torch.randint(N, (B, K), device=ys.device)
+        mus[~mask] = ys[torch.arange(B).unsqueeze(1), rand_idx][~mask]
+    return mus
+
+
+def _permute_to_match(mus_b, target_b):
     """
-    Batched Oracle‑EM loss against a Chain‑of‑Thought (CoT) trajectory.
+    Align mus_b to target_b (both K×D) and RETURN the permuted copy *and*
+    the permutation indices so we can update mus in‑place.
+    """
+    K = mus_b.size(0)
+    cost = ((mus_b.unsqueeze(1) - target_b.unsqueeze(0))**2).sum(-1).cpu().numpy()
+    row, col = linear_sum_assignment(cost)          # row[i] ↔ col[i]
+    # build array: perm[j] = row[index where col==j]
+    perm = torch.as_tensor(row[np.argsort(col)], device=mus_b.device)
+    mus_perm = mus_b[perm]                          # now ordered like target_b
+    return mus_perm, perm
 
-    Parameters
-    ----------
-    xs : (B, N, K) tensor
-        One‑hot class labels for the first L positions in each sequence.
-        All‑zero rows correspond to unlabelled samples.
-    ys : (B, N, D) tensor
-        Data sampled from a K‑component Gaussian mixture (identity covariance).
-        In the toy setting we take D == K.
-    cot : list[T] of (B, N, D) tensors
-        Model‑predicted per‑sample means after each of the T CoT steps.
-    eps : float, optional (default 1e‑8)
-        Numerical floor to avoid division by zero when normalising.
-    random_init : bool, optional (default True)
-        • True  – initialise EM by picking K random samples per batch.  
-        • False – moment initialisation from whatever labels exist in `xs`
-                  (may be ill‑conditioned if some classes have no labels).
 
-    Returns
-    -------
-    total_loss : scalar tensor
-        Σ_{t=0}^{T‑1}  MSE( EM means after step t, cot[t] )
-        Ready for back‑prop if you optimise the CoT model.
-    mus_trace  : list[T] of (B, K, D) tensors
-        Component‑mean trajectory after every EM M‑step.
+def oracle_em_loss(xs, ys, cot, eps: float = 1e-8):
+    """
+    xs  : (B,N,K) one‑hot (zeros = unlabeled)
+    ys  : (B,N,D)
+    cot : list[T] of (B,K,D)  (ground‑truth component means)
     """
     B, N, D = ys.shape
-    K       = xs.size(-1)
-    T       = len(cot)
+    K, T    = xs.size(-1), len(cot)
 
-    if random_init:
-        # choose K distinct indices per batch for a k‑means‑ish start
-        idx = torch.multinomial(torch.ones(B, N, device=ys.device), K, False)  # (B,K)
-        mus = ys[torch.arange(B).unsqueeze(1), idx]                            # (B,K,D)
-    else:
-        counts = xs.sum(dim=1).clamp_min(eps)           # (B,K)
-        mus    = (xs.transpose(1, 2) @ ys) / counts.unsqueeze(-1)  # (B,K,D)
+    mus = _moment_init(xs, ys, eps)                 # (B,K,D)
+    lbl_mask = xs.sum(-1, keepdim=True) > 0         # (B,N,1)
 
     total_loss, mus_trace = 0.0, []
 
     for t in range(T):
-        # ============ E‑step ==================================================
-        #   r_{b,n,k} ∝ exp(‑½‖y_{b,n} − μ_{b,k}‖²)
-        dist = ((ys.unsqueeze(2) - mus.unsqueeze(1))**2).sum(-1)   # (B,N,K)
-        r    = torch.softmax(-0.5 * dist, dim=-1)                  # (B,N,K)
+        # ---------- align & commit permutation ------------------------------
+        for b in range(B):
+            mus_b_aligned, perm = _permute_to_match(mus[b], cot[t][b])
+            mus[b] = mus_b_aligned                       # commit order
+        total_loss += F.mse_loss(mus, cot[t])
 
-        # ============ M‑step ==================================================
-        r_sum = r.sum(dim=1).clamp_min(eps)                        # (B,K)
-        mus   = (r.transpose(1, 2) @ ys) / r_sum.unsqueeze(-1)     # (B,K,D)
+        # ---------- E‑step ---------------------------------------------------
+        dist = ((ys.unsqueeze(2) - mus.unsqueeze(1))**2).sum(-1)  # (B,N,K)
+        r    = torch.softmax(-0.5 * dist, dim=-1)
+        r    = torch.where(lbl_mask, xs, r)                       # hard labels
+
+        # ---------- M‑step ---------------------------------------------------
+        r_sum = r.sum(dim=1).clamp_min(eps)                       # (B,K)
+        mus   = (r.transpose(1, 2) @ ys) / r_sum.unsqueeze(-1)    # (B,K,D)
         mus_trace.append(mus.detach())
 
-        # ============ step loss ==============================================
-        mu_expanded = torch.einsum('bnk,bkd->bnd', r, mus)         # (B,N,D)
-        print("###############", mu_expanded.shape, cot[t].shape)
-        total_loss  = total_loss + F.mse_loss(mu_expanded, cot[t])
-    total_loss = total_loss/T
+    return total_loss / T, mus_trace
 
-    return total_loss, mus_trace
 
 def train_step(model, xs, ys, head_mask, optimizer, loss_func):
     optimizer.zero_grad()
@@ -97,7 +167,7 @@ def train_step(model, xs, ys, head_mask, optimizer, loss_func):
         loss = loss_func(output, ys)
     loss.backward()
     optimizer.step()
-    return loss.detach().item(), output.detach()
+    return loss.detach().item(), output.detach(), loss_1, loss_2
 
 
 def sample_seeds(total_seeds, count):
@@ -186,7 +256,7 @@ def train(model, args):
 
         head_mask = head_mask_all[min(i//unmask_every_iter, n_head-1)]
 
-        loss, output = train_step(model, xs.cuda(), ys.cuda(), head_mask.cuda(), optimizer, loss_func)
+        loss, output, loss_1, loss_2 = train_step(model, xs.cuda(), ys.cuda(), head_mask.cuda(), optimizer, loss_func)
 
         point_wise_tags = list(range(curriculum.n_points))
         point_wise_loss_func = task.get_metric()
@@ -207,6 +277,8 @@ def train(model, args):
             wandb.log(
                 {
                     "overall_loss": loss,
+                    "prediction_loss": loss_1,
+                    "CoT_loss": loss_2
                     "excess_loss": loss / baseline_loss,
                     # "pointwise/loss": dict(
                     #     zip(point_wise_tags, point_wise_loss.cpu().numpy())
