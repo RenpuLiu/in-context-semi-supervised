@@ -245,12 +245,119 @@ class SubBlockLinear(nn.Module):
             output += self.bias
         return output
     
+# Old version of SoftmaxEncoder
+
+# class SoftmaxEncoder(nn.Module):
+#     def __init__(self, n_dims, n_positions, n_embd=128, n_layer=12, n_head=4, n_point=11,
+#                  activation="softmax", normalize_attn=True, mlp=True, layernorm=True):
+#         super(SoftmaxEncoder, self).__init__()
+#         self.name = f"SoftmaxEncoder_embd={n_embd}_layer={n_layer}_head={n_head}"
+
+#         # configs
+#         self.n_positions = n_positions
+#         self.n_dims = n_dims
+#         self.n_embd = n_embd
+#         self.n_head = n_head
+#         self.n_layer = n_layer
+#         self.activation = get_activation(activation)
+#         self.normalize_attn = normalize_attn
+#         self.layernorm = layernorm
+#         self.mlp = mlp
+#         self.n_point = n_point
+#         # layers
+#         self._read_in = nn.Linear(n_embd, n_embd)
+        
+#         self._queries = nn.ModuleList()
+#         self._keys = nn.ModuleList()
+#         self._values = nn.ModuleList()
+#         self._mlps = nn.ModuleList()
+#         self._lns_1 = nn.ModuleList()
+#         self._lns_2 = nn.ModuleList()
+#         for _ in range(n_layer):
+#             self._queries.append(nn.Linear(n_embd, self.n_head*n_embd, bias=False))
+#             self._keys.append(nn.Linear(n_embd, self.n_head*n_embd, bias=False))
+
+#             self._values.append(nn.Linear(n_embd, self.n_head*n_embd, bias=False))
+#             self._lns_1.append(nn.LayerNorm([self.n_embd]))
+#             self._mlps.append(
+#                 nn.Sequential(
+#                     nn.Linear(n_embd, n_embd),
+#                     nn.ReLU(),
+#                     nn.Linear(n_embd, n_embd),
+#                 )
+#             )
+#             self._lns_2.append(nn.LayerNorm([self.n_embd]))
+#         self._read_out = nn.Linear(n_embd, n_embd)
+
+#     @staticmethod
+#     def _combine(xs_b, ys_b):
+#         """
+#         Directly stack the x's and y's into the same location
+#         resulting sequence would be Bx(N+1)x(d+1), where (N+1)-th token is test
+#         """
+#         d = xs_b.size(-1)
+#         # half_n = xs_b.size(1)//3
+#         half_n = 5
+#         zs = torch.cat((ys_b, xs_b), dim=2)
+#         zs[:, half_n:, d:].zero_()
+#         if xs_b.shape[1] < ys_b.shape[1]:
+#             raise ValueError("Number of prompts in testing larger the training.")
+#         return zs
+
+#     def forward(self, xs, ys, head_mask, inds=None, return_hidden_states=False):
+#         if inds is None:
+#             inds = torch.arange(ys.shape[1])
+#         else:
+#             inds = torch.tensor(inds)
+#             if max(inds) >= ys.shape[1] or min(inds) < 0:
+#                 raise ValueError("inds contain indices where xs and ys are not defined")
+#         zs = self._combine(xs, ys)
+#         n_batch, n_points, _ = zs.shape
+#         hidden_states = []
+        
+#         H = self._read_in(zs)
+#         hidden_states.append(H)
+#         for (q, k, v, ln1, mlp, ln2) in zip(
+#             self._queries, self._keys, self._values,
+#             self._lns_1, self._mlps, self._lns_2,
+#         ):
+#             query = q(H)
+#             key = k(H)
+#             value = v(H)
+            
+#             query = query.view(n_batch, n_points, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
+#             key = key.view(n_batch, n_points, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
+#             value = value.view(n_batch, n_points, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
+#             attn_weights =self.activation(torch.einsum('abid,abjd->abij', query, key))
 
 
+
+#             attn_weights = torch.einsum('abij,abjd->abid', attn_weights, value)
+
+#             attn_weights = torch.sum(attn_weights, dim=1)
+
+#             # if self.normalize_attn:
+#             #     attn_weights = attn_weights/n_points
+#             H = H + attn_weights
+
+#             if self.layernorm:
+#                 H = ln1(H)
+
+#             if self.mlp:
+#                 H = H + mlp(H)
+#                 # if self.layernorm:
+#                 #     H = ln2(H)
+
+#             hidden_states.append(H)
+#         prediction = self._read_out(H)
+#         if return_hidden_states:
+#             return prediction[:, :, self.n_dims:], hidden_states
+#         return prediction[:, :, self.n_dims:]
+#############################################################################
 
 class SoftmaxEncoder(nn.Module):
-    def __init__(self, n_dims, n_positions, n_embd=128, n_layer=12, n_head=4, n_point=11,
-                 activation="softmax", normalize_attn=True, mlp=True, layernorm=True):
+    def __init__(self, n_dims, n_positions, n_embd=128, n_layer=12, n_head=4, n_point=11, n_cot=5,
+                 activation="softmax", normalize_attn=True, mlp=True, layernorm=True, return_cot=True):
         super(SoftmaxEncoder, self).__init__()
         self.name = f"SoftmaxEncoder_embd={n_embd}_layer={n_layer}_head={n_head}"
 
@@ -265,8 +372,9 @@ class SoftmaxEncoder(nn.Module):
         self.layernorm = layernorm
         self.mlp = mlp
         self.n_point = n_point
+        self.n_cot = n_cot
         # layers
-        self._read_in = nn.Linear(n_embd, n_embd)
+        self._read_in = nn.Linear(2*n_dims, n_embd) # Modifty the input dimension to 2*n_dims
         
         self._queries = nn.ModuleList()
         self._keys = nn.ModuleList()
@@ -301,9 +409,13 @@ class SoftmaxEncoder(nn.Module):
         half_n = 5
         zs = torch.cat((ys_b, xs_b), dim=2)
         zs[:, half_n:, d:].zero_()
+        zs = torch.cat((zs, torch.zeros(xs_b.size())), dim=2)
+        zeros = zs.new_zeros(zs.size(0), self.n_dims, zs.size(2))
+
+        zs_appended = torch.cat([zs, zeros], dim=1)
         if xs_b.shape[1] < ys_b.shape[1]:
             raise ValueError("Number of prompts in testing larger the training.")
-        return zs
+        return zs_appended
 
     def forward(self, xs, ys, head_mask, inds=None, return_hidden_states=False):
         if inds is None:
@@ -318,41 +430,51 @@ class SoftmaxEncoder(nn.Module):
         
         H = self._read_in(zs)
         hidden_states.append(H)
-        for (q, k, v, ln1, mlp, ln2) in zip(
-            self._queries, self._keys, self._values,
-            self._lns_1, self._mlps, self._lns_2,
-        ):
-            query = q(H)
-            key = k(H)
-            value = v(H)
+
+        cot_list = []
+
+        for r_step in range(self.n_cot):
+            H_input = H.clone()
+            for (q, k, v, ln1, mlp, ln2) in zip(
+                self._queries, self._keys, self._values,
+                self._lns_1, self._mlps, self._lns_2,
+            ):
+                query = q(H)
+                key = k(H)
+                value = v(H)
+                
+                query = query.view(n_batch, n_points, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
+                key = key.view(n_batch, n_points, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
+                value = value.view(n_batch, n_points, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
+                attn_weights =self.activation(torch.einsum('abid,abjd->abij', query, key))
+
+
+
+                attn_weights = torch.einsum('abij,abjd->abid', attn_weights, value)
+
+                attn_weights = torch.sum(attn_weights, dim=1)
+
+                H = H + attn_weights
+
+                if self.layernorm:
+                    H = ln1(H)
+
+                if self.mlp:
+                    H = H + mlp(H)
+                
+            H_cot = H[:, -self.n_dims:, :].clone()
+
+            cot_list.append(H_cot)
+
+            H = torch.cat([H, H_cot], dim=1)
+
             
-            query = query.view(n_batch, n_points, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
-            key = key.view(n_batch, n_points, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
-            value = value.view(n_batch, n_points, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
-            attn_weights =self.activation(torch.einsum('abid,abjd->abij', query, key))
 
-
-
-            attn_weights = torch.einsum('abij,abjd->abid', attn_weights, value)
-
-            attn_weights = torch.sum(attn_weights, dim=1)
-
-            # if self.normalize_attn:
-            #     attn_weights = attn_weights/n_points
-            H = H + attn_weights
-
-            if self.layernorm:
-                H = ln1(H)
-
-            if self.mlp:
-                H = H + mlp(H)
-                # if self.layernorm:
-                #     H = ln2(H)
 
             hidden_states.append(H)
         prediction = self._read_out(H)
-        if return_hidden_states:
-            return prediction[:, :, self.n_dims:], hidden_states
+        if return_cot:
+            return prediction[:, :, self.n_dims:], [cot_list[i][:, :, -self.n_dims:] for i in range(self.n_cot)]
         return prediction[:, :, self.n_dims:]
         
 
