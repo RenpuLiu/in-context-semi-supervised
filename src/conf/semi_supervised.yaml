@@ -3,7 +3,7 @@ inherit:
 
 model:
     family: SoftmaxEncoder
-    n_embd: 6
+    n_embd: 9
     n_layer: 3
     n_head: 1
     n_dims: 3
