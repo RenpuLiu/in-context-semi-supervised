@@ -5,6 +5,7 @@ import uuid
 from quinine import QuinineArgumentParser
 from tqdm import tqdm
 import torch
+import torch.nn.functional as F
 import yaml
 
 from eval import get_run_metrics
