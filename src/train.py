@@ -146,6 +146,19 @@ def oracle_em_loss(xs, ys, cot, eps: float = 1e-8):
         # ---------- E‑step ---------------------------------------------------
         dist = ((ys.unsqueeze(2) - mus.unsqueeze(1))**2).sum(-1)  # (B,N,K)
         r    = torch.softmax(-0.5 * dist, dim=-1)
+
+
+        print("\n[oracle_em_loss debug]")
+        print(f"  ys.shape       : {ys.shape}")       # (B, N, D)
+        print(f"  xs.shape       : {xs.shape}")       # (B, N?, K)
+        print(f"  r.shape        : {r.shape}")        # (B, N, K)
+        print(f"  lbl_mask.shape : {lbl_mask.shape}") # (B, N, 1)
+        
+        # optional – check for mismatched N on the fly
+        if xs.size(1) != ys.size(1):
+            print(">> MISMATCH: xs has N =", xs.size(1), "but ys/r have N =", ys.size(1))
+            # you can early‑exit here to stop the run:
+            raise ValueError("xs and ys sequence lengths differ!")
         r    = torch.where(lbl_mask, xs, r)                       # hard labels
 
         # ---------- M‑step ---------------------------------------------------
