@@ -425,17 +425,17 @@ class SoftmaxEncoder(nn.Module):
 
         
         # Here ################################################################
-        # zeros_pad = zs.new_zeros(zs.size(0), self.n_dims, zs.size(2))
-        # zs_appended = torch.cat([zs, zeros_pad], dim=1)
+        zeros_pad = zs.new_zeros(zs.size(0), self.n_dims, zs.size(2))
+        zs_appended = torch.cat([zs, zeros_pad], dim=1)
 
-        # eye = torch.eye(d, device=zs_appended.device)          
-        # zs_appended[:, N : N + d, 2*d : 3*d] = eye.unsqueeze(0).expand(B, -1, -1)
+        eye = torch.eye(d, device=zs_appended.device)          
+        zs_appended[:, N : N + d, 2*d : 3*d] = eye.unsqueeze(0).expand(B, -1, -1)
         # Here ################################################################
 
         if xs_b.shape[1] < ys_b.shape[1]:
             raise ValueError("Number of prompts in testing larger than training.")
 
-        return zs
+        return zs_appended
         
 
     def forward(self, xs, ys, head_mask, inds=None, return_hidden_states=False):
@@ -468,13 +468,13 @@ class SoftmaxEncoder(nn.Module):
                 value = v(H)
                 
                 # Here ################################################################
-                # query = query.view(n_batch, n_points + (r_step)*self.n_dims, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
-                # key = key.view(n_batch, n_points + (r_step)*self.n_dims, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
-                # value = value.view(n_batch, n_points + (r_step)*self.n_dims, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
+                query = query.view(n_batch, n_points + (r_step)*self.n_dims, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
+                key = key.view(n_batch, n_points + (r_step)*self.n_dims, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
+                value = value.view(n_batch, n_points + (r_step)*self.n_dims, self.n_head, self.n_embd).permute(0, 2, 1, 3) 
                 # Here ################################################################
-                query = query.view(n_batch, n_points , self.n_head, self.n_embd).permute(0, 2, 1, 3) 
-                key = key.view(n_batch, n_points , self.n_head, self.n_embd).permute(0, 2, 1, 3) 
-                value = value.view(n_batch, n_points , self.n_head, self.n_embd).permute(0, 2, 1, 3) 
+                # query = query.view(n_batch, n_points , self.n_head, self.n_embd).permute(0, 2, 1, 3) 
+                # key = key.view(n_batch, n_points , self.n_head, self.n_embd).permute(0, 2, 1, 3) 
+                # value = value.view(n_batch, n_points , self.n_head, self.n_embd).permute(0, 2, 1, 3) 
 
                 
                 attn_weights =self.activation(torch.einsum('abid,abjd->abij', query, key))
@@ -492,14 +492,14 @@ class SoftmaxEncoder(nn.Module):
                     H = H + mlp(H)
                     
             # Here ################################################################
-            # H_cot = H[:, -self.n_dims:, :].clone()
+            H_cot = H[:, -self.n_dims:, :].clone()
 
-            # cot_list.append(H_cot)
+            cot_list.append(H_cot)
 
-            # H = torch.cat([H_input, H_cot], dim=1)
+            H = torch.cat([H_input, H_cot], dim=1)
             
-            # eye = torch.eye(self.n_dims, device=H.device)          # (d, d) on the right device
-            # H[:, -self.n_dims : , 2*self.n_dims : 3*self.n_dims] = eye.unsqueeze(0).expand(n_batch, -1, -1)
+            eye = torch.eye(self.n_dims, device=H.device)          # (d, d) on the right device
+            H[:, -self.n_dims : , 2*self.n_dims : 3*self.n_dims] = eye.unsqueeze(0).expand(n_batch, -1, -1)
             # Here ################################################################
 
             
@@ -509,9 +509,9 @@ class SoftmaxEncoder(nn.Module):
         prediction = self._read_out(H[:,:self.n_point, :])
         if self.return_cot:
             # Here ################################################################
-            # return prediction[:, :, self.n_dims:self.n_dims*2], [cot_list[i][:, :, -self.n_dims:] for i in range(self.n_cot)]
+            return prediction[:, :, self.n_dims:self.n_dims*2], [cot_list[i][:, :, -self.n_dims:] for i in range(self.n_cot)]
             # Here ################################################################
-            return prediction[:, :, self.n_dims:self.n_dims*2], []
+            # return prediction[:, :, self.n_dims:self.n_dims*2], []
         return prediction[:, :, self.n_dims:]
         
 
