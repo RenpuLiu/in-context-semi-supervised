@@ -183,7 +183,7 @@ def cot_mean_accuracy(xs, ys, cot, *, step: int = -1):
 
 
 
-def train_step(model, xs, ys, head_mask, optimizer, loss_func, w):
+def train_step(model, xs, ys, xs_val, ys_val, head_mask, optimizer, loss_func, w):
     
     
     optimizer.zero_grad()
@@ -287,8 +287,14 @@ def train(model, args):
             curriculum.n_dims_truncated,
             **data_sampler_args,
         )
+        xs_val = data_sampler.sample_xs(
+            curriculum.n_points,
+            bsize,
+            curriculum.n_dims_truncated,
+            **data_sampler_args,
+        )
         task = task_sampler(**task_sampler_args)
-        ys, w = task.evaluate(xs)
+        ys, ys_val, w = task.evaluate(xs, xs_val)
         if i == 1:
             print(xs[0],ys[0])
 
@@ -296,7 +302,7 @@ def train(model, args):
 
         head_mask = head_mask_all[min(i//unmask_every_iter, n_head-1)]
 
-        loss, output, loss_1, loss_2, acc = train_step(model, xs.cuda(), ys.cuda(), head_mask.cuda(), optimizer, loss_func, w)
+        loss, output, loss_1, loss_2, acc = train_step(model, xs.cuda(), ys.cuda(), xs_val.cuda(), ys_val.cuda(), head_mask.cuda(), optimizer, loss_func, w)
 
         point_wise_tags = list(range(curriculum.n_points))
         point_wise_loss_func = task.get_metric()
