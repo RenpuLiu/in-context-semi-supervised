@@ -189,7 +189,7 @@ def train_step(model, xs, ys, head_mask, optimizer, loss_func, w):
     output, cot = model(xs, ys, head_mask)
     
     if 'SoftmaxEncoder' in model.name:
-        last_cot = cot[:,-3:,:]
+        last_cot = cot[-1][:,-3:,:]
         mse_loss = mean_squared_error(last_cot, w)
         loss_1 = loss_func(output[:,5:,:], xs[:,5:,:])
 
