@@ -36,4 +36,4 @@ training:
 out_dir: ../models/semi_supervised
 
 wandb:
-    name: "Renew_CoT_5steps_points_7_layers_3_dim_3"
+    name: "Renew_CoT_5steps_points_7_layers_4_dim_3_noise_0.5"
