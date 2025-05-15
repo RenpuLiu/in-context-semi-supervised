@@ -160,6 +160,10 @@ def oracle_em_loss(xs, ys, cot, eps: float = 1e-8):
     return total_loss / T, mus_trace
 
 
+def mean_squared_error(ys_pred, ys):
+    return (ys - ys_pred).square().mean()
+
+
 def cot_mean_accuracy(xs, ys, cot, *, step: int = -1):
 
     C = xs.size(-1)
@@ -178,13 +182,15 @@ def cot_mean_accuracy(xs, ys, cot, *, step: int = -1):
 
 
 
-def train_step(model, xs, ys, head_mask, optimizer, loss_func):
+def train_step(model, xs, ys, head_mask, optimizer, loss_func, w):
     
     
     optimizer.zero_grad()
     output, cot = model(xs, ys, head_mask)
     
     if 'SoftmaxEncoder' in model.name:
+        last_cot = cot[:,-3:,:]
+        mse_loss = mean_squared_error(last_cot, w)
         loss_1 = loss_func(output[:,5:,:], xs[:,5:,:])
 
         xs_proc = xs.clone()
@@ -193,14 +199,14 @@ def train_step(model, xs, ys, head_mask, optimizer, loss_func):
         loss_2, _ = oracle_em_loss(xs_proc, ys, cot)
         
         # loss = loss_1+loss_2
-        loss = loss_2
+        loss = mse_loss
         # loss = loss_func(output, xs)
         acc = cot_mean_accuracy(xs,ys,cot)
     else:
         loss = loss_func(output, ys)
     loss.backward()
     optimizer.step()
-    return loss.detach().item(), output.detach(), loss_2, loss_2, acc
+    return loss.detach().item(), output.detach(), mse_loss, mse_loss, acc
 
 
 def sample_seeds(total_seeds, count):
@@ -281,7 +287,7 @@ def train(model, args):
             **data_sampler_args,
         )
         task = task_sampler(**task_sampler_args)
-        ys = task.evaluate(xs)
+        ys, w = task.evaluate(xs)
         if i == 1:
             print(xs[0],ys[0])
 
@@ -289,7 +295,7 @@ def train(model, args):
 
         head_mask = head_mask_all[min(i//unmask_every_iter, n_head-1)]
 
-        loss, output, loss_1, loss_2, acc = train_step(model, xs.cuda(), ys.cuda(), head_mask.cuda(), optimizer, loss_func)
+        loss, output, loss_1, loss_2, acc = train_step(model, xs.cuda(), ys.cuda(), head_mask.cuda(), optimizer, loss_func, w)
 
         point_wise_tags = list(range(curriculum.n_points))
         point_wise_loss_func = task.get_metric()
