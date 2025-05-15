@@ -313,7 +313,7 @@ def train(model, args):
                     "overall_loss": loss_1,
                     "CoT_loss": loss_2,
                     "excess_loss": loss / baseline_loss,
-                    "Prediction accuracy: acc,
+                    "Prediction accuracy": acc,
                     # "pointwise/loss": dict(
                     #     zip(point_wise_tags, point_wise_loss.cpu().numpy())
                     # ),
