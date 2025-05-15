@@ -206,16 +206,20 @@ class SemiClassification(Task):
         else:
             raise NotImplementedError
         
-    def evaluate(self, xs_b):
+    def evaluate(self, xs_b, xs_val):
         sigma = 0.5
         noise = np.random.normal(0, sigma, xs_b.cpu().numpy().shape)
         noise = torch.tensor(noise, device=xs_b.device, dtype=xs_b.dtype)
 
+        noise_val = np.random.normal(0, sigma, xs_b.cpu().numpy().shape)
+        noise_val = torch.tensor(noise_val, device=xs_b.device, dtype=xs_b.dtype)
+
         w_b = self.w_b.to(xs_b.device)
 
         ys_b = torch.matmul(xs_b, w_b)+noise
+        ys_val = torch.matmul(xs_val, w_b)+noise_val
         
-        return ys_b, w_b
+        return ys_b, ys_val, w_b
 
     @staticmethod
     def generate_pool_dict(n_dims, num_tasks, **kwargs):  # ignore extra args
