@@ -215,7 +215,7 @@ class SemiClassification(Task):
 
         ys_b = torch.matmul(xs_b, w_b)+noise
         
-        return ys_b
+        return ys_b, w_b
 
     @staticmethod
     def generate_pool_dict(n_dims, num_tasks, **kwargs):  # ignore extra args
