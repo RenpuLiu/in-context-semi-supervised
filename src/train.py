@@ -160,6 +160,25 @@ def oracle_em_loss(xs, ys, cot, eps: float = 1e-8):
     return total_loss / T, mus_trace
 
 
+import torch
+
+def cot_mean_accuracy(xs, ys, cot, *, step: int = -1):
+
+    C = xs.size(-1)
+
+    mus = cot[step][:, -C:, :]        # (B, C, D)
+
+    dist2 = ((ys.unsqueeze(2) - mus.unsqueeze(1))**2).sum(-1)
+
+    preds = dist2.argmin(dim=-1)      # (B, N) predicted class index
+    true  = xs.argmax(dim=-1)         # (B, N) ground-truth index
+
+    acc = (preds == true).float().mean().item()
+    return acc
+
+
+
+
 def train_step(model, xs, ys, head_mask, optimizer, loss_func):
     
     
@@ -177,11 +196,12 @@ def train_step(model, xs, ys, head_mask, optimizer, loss_func):
         # loss = loss_1+loss_2
         loss = loss_2
         # loss = loss_func(output, xs)
+        acc = cot_mean_accuracy(xs,ys,cot)
     else:
         loss = loss_func(output, ys)
     loss.backward()
     optimizer.step()
-    return loss.detach().item(), output.detach(), loss_2, loss_2
+    return loss.detach().item(), output.detach(), loss_2, loss_2, acc
 
 
 def sample_seeds(total_seeds, count):
@@ -270,7 +290,7 @@ def train(model, args):
 
         head_mask = head_mask_all[min(i//unmask_every_iter, n_head-1)]
 
-        loss, output, loss_1, loss_2 = train_step(model, xs.cuda(), ys.cuda(), head_mask.cuda(), optimizer, loss_func)
+        loss, output, loss_1, loss_2, acc = train_step(model, xs.cuda(), ys.cuda(), head_mask.cuda(), optimizer, loss_func)
 
         point_wise_tags = list(range(curriculum.n_points))
         point_wise_loss_func = task.get_metric()
@@ -293,6 +313,7 @@ def train(model, args):
                     "overall_loss": loss_1,
                     "CoT_loss": loss_2,
                     "excess_loss": loss / baseline_loss,
+                    "Prediction accuracy: " acc,
                     # "pointwise/loss": dict(
                     #     zip(point_wise_tags, point_wise_loss.cpu().numpy())
                     # ),
