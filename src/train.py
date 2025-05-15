@@ -160,18 +160,17 @@ def oracle_em_loss(xs, ys, cot, eps: float = 1e-8):
     return total_loss / T, mus_trace
 
 
-import torch
-
 def cot_mean_accuracy(xs, ys, cot, *, step: int = -1):
 
     C = xs.size(-1)
-
+    xs_t = xs[:,5:,:]
+    ys_t = ys[:,5:,:]
     mus = cot[step][:, -C:, :]        # (B, C, D)
 
-    dist2 = ((ys.unsqueeze(2) - mus.unsqueeze(1))**2).sum(-1)
+    dist2 = ((ys_t.unsqueeze(2) - mus.unsqueeze(1))**2).sum(-1)
 
     preds = dist2.argmin(dim=-1)      # (B, N) predicted class index
-    true  = xs.argmax(dim=-1)         # (B, N) ground-truth index
+    true  = xs_t.argmax(dim=-1)         # (B, N) ground-truth index
 
     acc = (preds == true).float().mean().item()
     return acc
