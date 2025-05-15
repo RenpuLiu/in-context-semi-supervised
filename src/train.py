@@ -161,6 +161,7 @@ def oracle_em_loss(xs, ys, cot, eps: float = 1e-8):
 
 
 def mean_squared_error(ys_pred, ys):
+    ys = ys.to(ys_pred.device)   # ensure ys is on the same device
     return (ys - ys_pred).square().mean()
 
 
