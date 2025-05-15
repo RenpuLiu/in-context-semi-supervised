@@ -7,7 +7,7 @@ model:
     n_layer: 4
     n_head: 1
     n_dims: 3
-    n_point: 50
+    n_point: 7
     n_positions: 101
 
 training:
@@ -22,8 +22,8 @@ training:
     train_steps: 15001
     curriculum:
         points:
-            start: 50
-            end: 50
+            start: 7
+            end: 7
             inc: 2
             interval: 2000
         dims:
@@ -36,4 +36,4 @@ training:
 out_dir: ../models/semi_supervised
 
 wandb:
-    name: "Renew_CoT_5steps_points_50_layers_4_dim_3_noise_0.5"
+    name: "Renew_CoT_5steps_points_7_layers_4_dim_3_noise_0.5"
