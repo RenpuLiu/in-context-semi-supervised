@@ -356,7 +356,7 @@ class SubBlockLinear(nn.Module):
 #############################################################################
 
 class SoftmaxEncoder(nn.Module):
-    def __init__(self, n_dims, n_positions, n_embd=128, n_layer=12, n_head=4, n_point=11, n_cot=1,
+    def __init__(self, n_dims, n_positions, n_embd=128, n_layer=12, n_head=4, n_point=11, n_cot=5,
                  activation="softmax", normalize_attn=True, mlp=True, layernorm=True, return_cot=True):
         super(SoftmaxEncoder, self).__init__()
         self.name = f"SoftmaxEncoder_embd={n_embd}_layer={n_layer}_head={n_head}"
