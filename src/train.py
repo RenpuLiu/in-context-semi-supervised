@@ -288,7 +288,7 @@ def train(model, args):
             **data_sampler_args,
         )
         xs_val = data_sampler.sample_xs(
-            10,
+            15,
             bsize,
             curriculum.n_dims_truncated,
             **data_sampler_args,
