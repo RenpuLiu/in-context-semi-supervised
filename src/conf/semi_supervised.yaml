@@ -7,7 +7,7 @@ model:
     n_layer: 4
     n_head: 1
     n_dims: 3
-    n_point: 15
+    n_point: 25
     n_positions: 101
 
 training:
@@ -22,8 +22,8 @@ training:
     train_steps: 15001
     curriculum:
         points:
-            start: 15
-            end: 15
+            start: 25
+            end: 25
             inc: 2
             interval: 2000
         dims:
