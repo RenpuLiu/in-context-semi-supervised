@@ -211,7 +211,7 @@ class SemiClassification(Task):
         noise = np.random.normal(0, sigma, xs_b.cpu().numpy().shape)
         noise = torch.tensor(noise, device=xs_b.device, dtype=xs_b.dtype)
 
-        noise_val = np.random.normal(0, sigma, xs_b.cpu().numpy().shape)
+        noise_val = np.random.normal(0, sigma, xs_val.cpu().numpy().shape)
         noise_val = torch.tensor(noise_val, device=xs_b.device, dtype=xs_b.dtype)
 
         w_b = self.w_b.to(xs_b.device)
