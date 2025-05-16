@@ -195,14 +195,14 @@ class SemiClassification(Task):
         self.scale = scale
 
         if pool_dict is None and seeds is None:
-            self.w_b, _ = torch.linalg.qr(torch.randn(self.b_size, self.n_dims, self.n_dims))
+            self.w_b, _ =torch.randn(self.b_size, self.n_dims, self.n_dims)
         elif seeds is not None:
             self.w_b = torch.zeros(self.b_size, self.n_dims, self.n_dims)
             generator = torch.Generator()
             assert len(seeds) == self.b_size
             for i, seed in enumerate(seeds):
                 generator.manual_seed(seed)
-                self.w_b[i], _ = torch.linalg.qr(torch.randn(self.n_dims, self.n_dims, generator=generator))
+                self.w_b[i], _ = torch.randn(self.n_dims, self.n_dims, generator=generator)
         else:
             raise NotImplementedError
         
