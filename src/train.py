@@ -200,8 +200,9 @@ def train_step(model, xs, ys, xs_val, ys_val, head_mask, optimizer, loss_func, w
         loss_2, _ = oracle_em_loss(xs_proc, ys, cot)
         
         # loss = loss_1+loss_2
-        loss = mse_loss
+        ## loss = mse_loss
         # loss = loss_func(output, xs)
+        loss = loss_2
         acc = cot_mean_accuracy(xs,ys,cot)
     else:
         loss = loss_func(output, ys)
